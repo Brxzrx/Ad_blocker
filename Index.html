@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdBlock VPN/DNS - مانع إعلانات السوشال ميديا</title>
+    <style>
+        :root {
+            --primary: #0f0;
+            --secondary: #00ff88;
+            --dark: #000;
+            --darker: #111;
+            --terminal: #00ff00;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+        
+        body {
+            background-color: var(--dark);
+            color: var(--terminal);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 255, 0, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(0, 255, 136, 0.05) 0%, transparent 20%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.1;
+            z-index: -1;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            border-bottom: 2px solid var(--primary);
+            padding: 20px 0;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .glitch {
+            font-size: 2.5em;
+            font-weight: bold;
+            text-transform: uppercase;
+            position: relative;
+            text-shadow: 0.05em 0 0 var(--primary), -0.03em -0.04em 0 var(--secondary);
+            animation: glitch 725ms infinite;
+        }
+        
+        @keyframes glitch {
+            0% { text-shadow: 0.05em 0 0 var(--primary), -0.03em -0.04em 0 var(--secondary); }
+            15% { text-shadow: 0.05em 0 0 var(--primary), -0.03em -0.04em 0 var(--secondary); }
+            16% { text-shadow: -0.05em -0.025em 0 var(--primary), 0.025em 0.035em 0 var(--secondary); }
+            49% { text-shadow: -0.05em -0.025em 0 var(--primary), 0.025em 0.035em 0 var(--secondary); }
+            50% { text-shadow: 0.05em 0.035em 0 var(--primary), 0.03em 0 0 var(--secondary); }
+            99% { text-shadow: 0.05em 0.035em 0 var(--primary), 0.03em 0 0 var(--secondary); }
+            100% { text-shadow: -0.05em 0 0 var(--primary), -0.025em -0.04em 0 var(--secondary); }
+        }
+        
+        .login-container {
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid var(--primary);
+            padding: 30px;
+            border-radius: 5px;
+            max-width: 400px;
+            margin: 50px auto;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+        
+        .login-container.active {
+            display: block;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: var(--darker);
+            border: 1px solid var(--primary);
+            color: var(--terminal);
+            font-size: 16px;
+            border-radius: 3px;
+        }
+        
+        button {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            border-radius: 3px;
+        }
+        
+        button:hover {
+            background: var(--primary);
+            color: var(--dark);
+            box-shadow: 0 0 15px var(--primary);
+        }
+        
+        .dashboard {
+            display: none;
+        }
+        
+        .dashboard.active {
+            display: block;
+        }
+        
+        .admin-panel {
+            background: rgba(0, 20, 0, 0.7);
+            border: 1px solid var(--primary);
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .code-item {
+            background: rgba(0, 30, 0, 0.5);
+            border: 1px solid var(--secondary);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .code {
+            font-family: monospace;
+            font-size: 18px;
+            color: var(--primary);
+        }
+        
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        
+        .active-status {
+            background: rgba(0, 255, 0, 0.2);
+            color: var(--primary);
+        }
+        
+        .used-status {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff5555;
+        }
+        
+        .instructions {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--secondary);
+            padding: 25px;
+            margin: 30px 0;
+            border-radius: 5px;
+            line-height: 1.8;
+        }
+        
+        .terminal {
+            background: var(--darker);
+            border: 1px solid var(--primary);
+            padding: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin: 20px 0;
+            overflow-x: auto;
+            border-radius: 5px;
+        }
+        
+        .dns-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .dns-card {
+            background: rgba(0, 20, 0, 0.5);
+            border: 1px solid var(--primary);
+            padding: 20px;
+            border-radius: 5px;
+        }
+        
+        .blink {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .logout-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 0, 0, 0.2);
+            border-color: #ff5555;
+            color: #ff5555;
+        }
+        
+        .user-form {
+            background: rgba(0, 30, 0, 0.7);
+            padding: 20px;
+            border: 1px solid var(--secondary);
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .alert {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 3px;
+            display: none;
+        }
+        
+        .alert.success {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid var(--primary);
+            display: block;
+        }
+        
+        .alert.error {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff5555;
+            display: block;
+        }
+        
+        .typewriter {
+            overflow: hidden;
+            border-right: .15em solid var(--primary);
+            white-space: nowrap;
+            margin: 0 auto;
+            letter-spacing: .15em;
+            animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
+        }
+        
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+        
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: var(--primary) }
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix-bg" id="matrixCanvas"></div>
+    
+    <div class="container">
+        <header>
+            <h1 class="glitch">AdBlock DNS/VPN System</h1>
+            <p class="typewriter">نظام متكامل لحجب إعلانات السوشال ميديا والتطبيقات</p>
+        </header>
+        
+        <!-- صفحة تسجيل الدخول -->
+        <div id="loginPage" class="login-container active">
+            <h2>🔐 تسجيل الدخول للمسؤول</h2>
+            <div id="loginAlert" class="alert"></div>
+            <input type="text" id="username" placeholder="اسم المستخدم" value="ADMIN">
+            <input type="password" id="password" placeholder="كلمة المرور" value="0537219007">
+            <button onclick="login()">دخول</button>
+        </div>
+        
+        <!-- لوحة تحكم المسؤول -->
+        <div id="adminDashboard" class="dashboard">
+            <button class="logout-btn" onclick="logout()">🚪 خروج</button>
+            
+            <div class="admin-panel">
+                <h2>👑 لوحة تحكم المسؤول</h2>
+                <p>مرحباً <span id="adminName" class="blink">ADMIN</span></p>
+                
+                <div class="user-form">
+                    <h3>➕ إنشاء رمز جديد</h3>
+                    <input type="text" id="newCodeName" placeholder="اسم الرمز (اختياري)">
+                    <select id="codeType">
+                        <option value="dns">DNS مانع إعلانات</option>
+                        <option value="vpn">VPN مانع إعلانات</option>
+                        <option value="both">DNS + VPN</option>
+                    </select>
+                    <button onclick="generateCode()">إنشاء رمز جديد</button>
+                    <button onclick="generateRandomCode()">إنشاء رمز عشوائي</button>
+                </div>
+                
+                <div class="user-form">
+                    <h3>📊 إحصائيات النظام</h3>
+                    <p>عدد الرموز النشطة: <span id="activeCodes">0</span></p>
+                    <p>عدد الرموز المستخدمة: <span id="usedCodes">0</span></p>
+                    <p>عدد المستخدمين: <span id="totalUsers">0</span></p>
+                </div>
+                
+                <h3>🗂️ إدارة الرموز</h3>
+                <div id="codesList">
+                    <!-- الرموز ستظهر هنا -->
+                </div>
+            </div>
+            
+            <!-- قسم التعليمات والإعدادات -->
+            <div class="instructions">
+                <h2>📚 إعدادات DNS/VPN لحجب الإعلانات</h2>
+                
+                <div class="dns-info">
+                    <div class="dns-card">
+                        <h3>🔧 إعدادات DNS الموصى بها</h3>
+                        <div class="terminal">
+# DNS Servers لحجب الإعلانات:
+Primary DNS: 94.140.14.14
+Secondary DNS: 94.140.15.15
+
+# أو استخدام:
+AdGuard DNS: 94.140.14.14
+AdGuard Family: 94.140.14.15
+
+# لإعداد DNS على الأندرويد:
+1. اذهب إلى الإعدادات
+2. الشبكة والإنترنت
+3. DNS الخاص
+4. اختر "خاص"
+5. أدخل العناوين أعلاه
+                        </div>
+                    </div>
+                    
+                    <div class="dns-card">
+                        <h3>🛡️ إعدادات VPN المتقدمة</h3>
+                        <div class="terminal">
+# ملف تكوين VPN (OpenVPN):
+client
+dev tun
+proto udp
+remote vpn.adblock-system.com 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+cipher AES-256-CBC
+auth SHA256
+verb 3
+mute 20
+
+# إعدادات حجب الإعلانات:
+setenv opt block-local-dns
+block-outside-dns
+dhcp-option DNS 94.140.14.14
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="terminal">
+# ⚡ قوائم حجب للسوشال ميديا:
+facebook.com##[role="banner"]
+youtube.com##.video-ads
+twitter.com##[data-testid="placementTracking"]
+instagram.com##._aawx
+tiktok.com##[data-e2e="ad-badge"]
+
+# 📱 للتطبيقات:
+- تعطيل إعلانات فيسبوك: com.facebook.ads
+- تعطيل إعلانات يوتيوب: com.google.android.youtube
+- تعطيل إعلانات انستقرام: com.instagram.android
+                </div>
+            </div>
+            
+            <!-- قسم للمستخدمين -->
+            <div class="user-form">
+                <h3>👥 نظام توزيع الرموز للمستخدمين</h3>
+                <div id="userAccessSection">
+                    <p>شارك هذا الرابط مع المستخدمين:</p>
+                    <div class="terminal" id="shareLink">https://adblock-system.com/access</div>
+                    <button onclick="copyShareLink()">نسخ الرابط</button>
+                    
+                    <h4>📥 استلام رمز:</h4>
+                    <input type="text" id="userCodeInput" placeholder="أدخل الرمز الذي حصلت عليه">
+                    <button onclick="validateUserCode()">تفعيل الرمز</button>
+                    <div id="userMessage" class="alert"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // بيانات التخزين المحلي
+        let codes = JSON.parse(localStorage.getItem('adblock_codes')) || [];
+        let users = JSON.parse(localStorage.getItem('adblock_users')) || [];
+        let currentAdmin = null;
+
+        // مصفوفة Matrix الخلفية
+        function initMatrix() {
+            const canvas = document.getElementById('matrixCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            const chars = "01アドブロック01010101";
+            const charArray = chars.split("");
+            const columns = canvas.width / 20;
+            const drops = [];
+            
+            for(let i = 0; i < columns; i++) {
+                drops[i] = 1;
+            }
+            
+            function draw() {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#0f0';
+                ctx.font = '15px monospace';
+                
+                for(let i = 0; i < drops.length; i++) {
+                    const text = charArray[Math.floor(Math.random() * charArray.length)];
+                    ctx.fillText(text, i * 20, drops[i] * 20);
+                    
+                    if(drops[i] * 20 > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+            
+            setInterval(draw, 50);
+            
+            window.addEventListener('resize', function() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            });
+        }
+
+        // تسجيل الدخول
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const alert = document.getElementById('loginAlert');
+            
+            if(username === 'ADMIN' && password === '0537219007') {
+                currentAdmin = username;
+                document.getElementById('loginPage').classList.remove('active');
+                document.getElementById('adminDashboard').classList.add('active');
+                document.getElementById('adminName').textContent = username;
+                updateDashboard();
+                alert.className = 'alert success';
+                alert.innerHTML = '✅ تم الدخول بنجاح!';
+            } else {
+                alert.className = 'alert error';
+                alert.innerHTML = '❌ خطأ في اسم المستخدم أو كلمة المرور';
+            }
+            setTimeout(() => alert.style.display = 'none', 3000);
+        }
+
+        // تسجيل الخروج
+        function logout() {
+            currentAdmin = null;
+            document.getElementById('adminDashboard').classList.remove('active');
+            document.getElementById('loginPage').classList.add('active');
+        }
+
+        // إنشاء رمز جديد
+        function generateCode() {
+            const name = document.getElementById('newCodeName').value || `رمز_${Date.now()}`;
+            const type = document.getElementById('codeType').value;
+            
+            const code = {
+                id: Date.now(),
+                code: `ADBLOCK-${Math.random().toString(36).substr(2, 8).toUpperCase()}-${type.toUpperCase()}`,
+                name: name,
+                type: type,
+                created: new Date().toLocaleString('ar-SA'),
+                status: 'active',
+                usedBy: null,
+                usedAt: null
+            };
+            
+            codes.push(code);
+            localStorage.setItem('adblock_codes', JSON.stringify(codes));
+            updateDashboard();
+            
+            // عرض الرمز المنشأ
+            const alert = document.getElementById('loginAlert');
+            alert.className = 'alert success';
+            alert.innerHTML = `✅ تم إنشاء الرمز: <strong>${code.code}</strong>`;
+            alert.style.display = 'block';
+            setTimeout(() => alert.style.display = 'none', 5000);
+        }
+
+        // إنشاء رمز عشوائي
+        function generateRandomCode() {
+            const randomNames = ['مستخدم_خاص', 'عشوائي_1', 'مستخدم_VIP', 'عشوائي_2', 'مميز', 'سريع'];
+            const name = randomNames[Math.floor(Math.random() * randomNames.length)];
+            document.getElementById('newCodeName').value = name;
+            generateCode();
+        }
+
+        // تحديث لوحة التحكم
+        function updateDashboard() {
+            const codesList = document.getElementById('codesList');
+            const activeCodes = codes.filter(c => c.status === 'active').length;
+            const usedCodes = codes.filter(c => c.status === 'used').length;
+            
+            document.getElementById('activeCodes').textContent = activeCodes;
+            document.getElementById('usedCodes').textContent = usedCodes;
+            document.getElementById('totalUsers').textContent = users.length;
+            
+            codesList.innerHTML = '';
+            
+            codes.forEach(code => {
+                const codeElement = document.createElement('div');
+                codeElement.className = 'code-item';
+                codeElement.innerHTML = `
+                    <div>
+                        <strong class="code">${code.code}</strong><br>
+                        <small>النوع: ${code.type} | الاسم: ${code.name}</small><br>
+                        <small>تاريخ الإنشاء: ${code.created}</small>
+                    </div>
+                    <div>
+                        <span class="status ${code.status === 'active' ? 'active-status' : 'used-status'}">
+                            ${code.status === 'active' ? '🟢 نشط' : '🔴 مستخدم'}
+                        </span>
+                        ${code.status === 'active' ? 
+                            `<button onclick="deleteCode(${code.id})">🗑️ حذف</button>` : 
+                            `<small>مستخدم بواسطة: ${code.usedBy || 'غير معروف'}</small>`
+                        }
+                    </div>
+                `;
+                codesList.appendChild(codeElement);
+            });
+        }
+
+        // حذف رمز
+        function deleteCode(id) {
+            if(confirm('هل أنت متأكد من حذف هذا الرمز؟')) {
+                codes = codes.filter(c => c.id !== id);
+                localStorage.setItem('adblock_codes', JSON.stringify(codes));
+                updateDashboard();
+            }
+        }
+
+        // نسخ رابط المشاركة
+        function copyShareLink() {
+            const link = document.getElementById('shareLink').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                const alert = document.getElementById('loginAlert');
+                alert.className = 'alert success';
+                alert.innerHTML = '✅ تم نسخ الرابط إلى الحافظة';
+                alert.style.display = 'block';
+                setTimeout(() => alert.style.display = 'none', 3000);
+            });
+        }
+
+        // تحقق من رمز المستخدم
+        function validateUserCode() {
+            const userCode = document.getElementById('userCodeInput').value.trim();
+            const message = document.getElementById('userMessage');
+            
+            const foundCode = codes.find(c => c.code === userCode && c.status === 'active');
+            
+            if(foundCode) {
+                foundCode.status = 'used';
+                foundCode.usedBy = `مستخدم_${Date.now()}`;
+                foundCode.usedAt = new Date().toLocaleString('ar-SA');
+                
+                users.push({
+                    id: Date.now(),
+                    code: userCode,
+                    joined: new Date().toLocaleString('ar-SA')
+                });
+                
+                localStorage.setItem('adblock_codes', JSON.stringify(codes));
+                localStorage.setItem('adblock_users', JSON.stringify(users));
+                updateDashboard();
+                
+                message.className = 'alert success';
+                message.innerHTML = `
+                    ✅ تم تفعيل الرمز بنجاح!<br>
+                    <strong>إعدادات DNS:</strong> 94.140.14.14 / 94.140.15.15<br>
+                    <strong>إعدادات VPN:</strong> قم بتنزيل ملف التكوين من <a href="#" style="color:#0f0">هذا الرابط</a>
+                `;
+                
+                // تنظيف الحقل
+                document.getElementById('userCodeInput').value = '';
+            } else {
+                message.className = 'alert error';
+                message.innerHTML = '❌ الرمز غير صالح أو تم استخدامه مسبقاً';
+            }
+            
+            message.style.display = 'block';
+            setTimeout(() => message.style.display = 'none', 5000);
+        }
+
+        // تهيئة النظام
+        document.addEventListener('DOMContentLoaded', function() {
+            initMatrix();
+            
+            // إضافة بعض الرموز الافتراضية إذا لم تكن موجودة
+            if(codes.length === 0) {
+                const defaultCodes = [
+                    {
+                        id: 1,
+                        code: 'ADBLOCK-X8F3G2H1-DNS',
+                        name: 'رمز_افتراضي_1',
+                        type: 'dns',
+                        created: new Date().toLocaleString('ar-SA'),
+                        status: 'active',
+                        usedBy: null,
+                        usedAt: null
+                    },
+                    {
+                        id: 2,
+                        code: 'ADBLOCK-Y5J7K9L3-VPN',
+                        name: 'عشوائي_1',
+                        type: 'vpn',
+                        created: new Date().toLocaleString('ar-SA'),
+                        status: 'used',
+                        usedBy: 'مستخدم_قديم',
+                        usedAt: new Date().toLocaleString('ar-SA')
+                    }
+                ];
+                
+                codes = defaultCodes;
+                localStorage.setItem('adblock_codes', JSON.stringify(codes));
+            }
+            
+            // إذا كان مسجلاً بالفعل
+            if(localStorage.getItem('admin_logged_in') === 'true') {
+                document.getElementById('loginPage').classList.remove('active');
+                document.getElementById('adminDashboard').classList.add('active');
+                updateDashboard();
+            }
+        });
+
+        // حفظ حالة تسجيل الدخول
+        window.addEventListener('beforeunload', function() {
+            if(currentAdmin) {
+                localStorage.setItem('admin_logged_in', 'true');
+            } else {
+                localStorage.removeItem('admin_logged_in');
+            }
+        });
+    </script>
+</body>
+</html>
